@@ -1,15 +1,14 @@
-"""Storage backend abstraction."""
 from .base import StorageBackend
 from .local import LocalStorageBackend
-from .aws import AWSStorageBackend
+from .postgres import PostgresStorageBackend
 
 
 def get_storage_backend() -> StorageBackend:
     """Get the appropriate storage backend based on configuration."""
     from app.config import settings
     
-    if settings.use_aws:
-        return AWSStorageBackend()
+    if settings.database_url:
+        return PostgresStorageBackend(settings.database_url)
     return LocalStorageBackend()
 
 

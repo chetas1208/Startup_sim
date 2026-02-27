@@ -37,16 +37,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             {/* Logo */}
             <Link href="/" className="flex items-center gap-3 group">
               <div
-                className="p-2 rounded-lg"
-                style={{ backgroundColor: 'rgb(var(--accent))' }}
+                className="p-2 rounded-xl bg-indigo-600 shadow-lg shadow-indigo-600/20"
               >
                 <Sparkles className="w-5 h-5 text-white" />
               </div>
               <span
-                className="font-bold text-lg hidden sm:inline"
-                style={{ color: 'rgb(var(--text-primary))' }}
+                className="font-black text-xl tracking-tighter hidden sm:inline text-zinc-900 dark:text-zinc-100"
               >
-                Startup Sim
+                VENTURE<span className="text-indigo-600">FORGE</span>
               </span>
             </Link>
 
@@ -118,8 +116,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <p className="text-sm" style={{ color: 'rgb(var(--text-secondary))' }}>
-              © 2025 Startup Simulator. Built with AI agents.
+            <p className="text-sm text-zinc-500 dark:text-zinc-500 font-medium">
+              © {new Date().getFullYear()} VentureForge. Powered by Autonomous Agents.
             </p>
             <div className="flex items-center gap-6">
               {['Privacy', 'Terms', 'Contact'].map((label) => (

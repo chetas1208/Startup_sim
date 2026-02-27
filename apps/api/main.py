@@ -1,25 +1,24 @@
-"""FastAPI main application."""
+"""FastAPI main application for VentureForge."""
 import asyncio
 import logging
 from contextlib import asynccontextmanager
 from datetime import datetime
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Dict, Any
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse, FileResponse
+from fastapi.responses import StreamingResponse
 from sse_starlette.sse import EventSourceResponse
 
-from config import settings
+from app.config import settings
 from services.workflow import WorkflowOrchestrator
-from services.storage import get_storage_backend
+from app.storage import get_storage_backend
 from shared.models import (
     CreateRunRequest,
-    CreateRunResponse,
-    StartupDossier,
+    RunResponse,
+    VentureDossier,
     RunStatus,
-    AskQuestionRequest,
-    AskQuestionResponse,
+    GraphData,
 )
 
 logging.basicConfig(level=settings.log_level)
@@ -29,23 +28,23 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifecycle management."""
-    logger.info("Starting up...")
+    logger.info("VentureForge API starting up...")
     storage = get_storage_backend()
     await storage.initialize()
     yield
-    logger.info("Shutting down...")
+    logger.info("VentureForge API shutting down...")
 
 
 app = FastAPI(
-    title="Startup Sim Agent API",
+    title="VentureForge API",
     version="1.0.0",
     lifespan=lifespan,
 )
 
-# CORS
+# CORS - Using settings or unrestricted for hackathon
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins.split(","),
+    allow_origins=["*"], # settings.cors_origins.split(",") if hasattr(settings, 'cors_origins') else ["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -55,82 +54,71 @@ app.add_middleware(
 @app.get("/")
 async def root():
     return {
-        "name": "Startup Sim Agent API",
+        "name": "VentureForge API",
         "version": "1.0.0",
         "status": "running",
     }
 
 
-@app.post("/api/runs", response_model=CreateRunResponse)
+@app.post("/api/runs", response_model=RunResponse)
 async def create_run(request: CreateRunRequest):
-    """Start a new startup simulation run."""
+    """Start a new VentureForge simulation run."""
     storage = get_storage_backend()
     
-    # Create initial dossier
     run_id = storage.generate_run_id()
-    dossier = StartupDossier(
+    dossier = VentureDossier(
         run_id=run_id,
-        raw_idea=request.idea,
+        idea_text=request.idea_text,
+        status=RunStatus.QUEUED,
         created_at=datetime.utcnow(),
         updated_at=datetime.utcnow(),
-        status=RunStatus.PENDING,
     )
     
     await storage.save_dossier(dossier)
     
     # Start workflow in background
     orchestrator = WorkflowOrchestrator()
-    asyncio.create_task(orchestrator.run_workflow(run_id, request.idea))
+    asyncio.create_task(orchestrator.run_workflow(run_id, request.idea_text))
     
-    return CreateRunResponse(run_id=run_id, status=RunStatus.PENDING)
+    return RunResponse(run_id=run_id, status=RunStatus.QUEUED)
 
 
 @app.get("/api/runs/{run_id}/events")
 async def stream_events(run_id: str):
-    """Stream SSE events for a run."""
+    """Stream SSE events for a project run."""
     storage = get_storage_backend()
     
     async def event_generator() -> AsyncGenerator[dict, None]:
-        """Generate SSE events."""
-        last_update = None
-        max_iterations = 600  # 10 minutes max
-        iteration = 0
+        last_step = None
+        last_status = None
         
-        while iteration < max_iterations:
+        while True:
             try:
                 dossier = await storage.get_dossier(run_id)
                 if not dossier:
-                    yield {
-                        "event": "error",
-                        "data": '{"message": "Run not found"}',
-                    }
+                    yield {"event": "error", "data": '{"message": "Not found"}'}
                     break
                 
-                # Send update if changed
-                if dossier.updated_at != last_update:
+                # Check for updates in step or status
+                if dossier.current_step != last_step or dossier.status != last_status:
                     yield {
                         "event": "update",
                         "data": dossier.model_dump_json(),
                     }
-                    last_update = dossier.updated_at
+                    last_step = dossier.current_step
+                    last_status = dossier.status
                 
-                # Check if completed
-                if dossier.status in [RunStatus.COMPLETED, RunStatus.FAILED]:
+                if dossier.status in [RunStatus.DONE, RunStatus.ERROR]:
                     yield {
                         "event": "complete",
                         "data": dossier.model_dump_json(),
                     }
                     break
                 
-                await asyncio.sleep(1)
-                iteration += 1
-                
+                await asyncio.sleep(1.5)
             except Exception as e:
-                logger.error(f"Error streaming events: {e}")
-                yield {
-                    "event": "error",
-                    "data": f'{{"message": "{str(e)}"}}',
-                }
+                logger.error(f"SSE Error: {e}")
+                yield {"event": "error", "data": f'{{"message": "{str(e)}"}}'}
                 break
     
     return EventSourceResponse(event_generator())
@@ -141,10 +129,8 @@ async def get_run(run_id: str):
     """Get the full dossier for a run."""
     storage = get_storage_backend()
     dossier = await storage.get_dossier(run_id)
-    
     if not dossier:
         raise HTTPException(status_code=404, detail="Run not found")
-    
     return dossier
 
 
@@ -156,64 +142,66 @@ async def list_runs(limit: int = 20):
     return {"runs": runs}
 
 
-@app.get("/api/runs/{run_id}/artifact/report.md")
-async def download_markdown(run_id: str):
-    """Download the markdown report."""
+@app.get("/api/runs/{run_id}/pdf/{report_type}")
+async def download_pdf(run_id: str, report_type: str):
+    """Download specific strategic PDF reports."""
     storage = get_storage_backend()
     
-    try:
-        content = await storage.get_artifact(run_id, "report.md")
-        return StreamingResponse(
-            iter([content]),
-            media_type="text/markdown",
-            headers={
-                "Content-Disposition": f"attachment; filename={run_id}_report.md"
-            },
-        )
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="Report not found")
-
-
-@app.get("/api/runs/{run_id}/artifact/report.pdf")
-async def download_pdf(run_id: str):
-    """Download the PDF report."""
-    storage = get_storage_backend()
+    filename_map = {
+        "market": "market_analysis.pdf",
+        "competition": "competitive_analysis.pdf",
+        "strategy": "strategy_positioning.pdf"
+    }
     
+    if report_type not in filename_map:
+        raise HTTPException(status_code=400, detail="Invalid report type")
+        
+    filename = filename_map[report_type]
     try:
-        content = await storage.get_artifact(run_id, "report.pdf")
+        content = await storage.get_artifact(run_id, filename)
         return StreamingResponse(
             iter([content]),
             media_type="application/pdf",
-            headers={
-                "Content-Disposition": f"attachment; filename={run_id}_report.pdf"
-            },
+            headers={"Content-Disposition": f"attachment; filename={run_id}_{filename}"},
         )
     except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="Report not found")
+        raise HTTPException(status_code=404, detail=f"Report {report_type} not found")
 
 
-@app.post("/api/runs/{run_id}/ask", response_model=AskQuestionResponse)
-async def ask_question(run_id: str, request: AskQuestionRequest):
-    """Ask a question about the dossier using RAG (if Senso enabled)."""
-    from services.integrations.senso_client import get_senso_client
-    
-    senso = get_senso_client()
-    if not senso.is_enabled():
-        raise HTTPException(
-            status_code=501,
-            detail="Senso RAG not configured. Set SENSO_API_KEY to enable.",
-        )
-    
+@app.get("/api/runs/{run_id}/graph", response_model=GraphData)
+async def get_graph(run_id: str):
+    """Get graph data for visualization (from Neo4j or fallback)."""
     storage = get_storage_backend()
     dossier = await storage.get_dossier(run_id)
-    
     if not dossier:
         raise HTTPException(status_code=404, detail="Run not found")
+        
+    # Logic to build graph from dossier data (Fallback)
+    nodes = []
+    edges = []
     
-    answer = await senso.ask_question(run_id, request.question, dossier)
-    return answer
+    # Root Node
+    nodes.append({"id": "root", "label": "Startup Idea", "type": "Idea", "properties": {"text": dossier.idea_text}})
+    
+    if dossier.market_research:
+        for idx, comp in enumerate(dossier.market_research.competitors):
+            node_id = f"comp_{idx}"
+            nodes.append({
+                "id": node_id,
+                "label": comp.name,
+                "type": "Competitor",
+                "properties": {"description": comp.description}
+            })
+            edges.append({"source": "root", "target": node_id, "type": "MENTIONED_IN"})
+            
+    # TODO: Add segments if available in future
+    
+    return {"nodes": nodes, "edges": edges}
 
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host=settings.api_host, port=settings.api_port)
+    # Use config values if available
+    host = getattr(settings, "api_host", "0.0.0.0")
+    port = getattr(settings, "api_port", 8000)
+    uvicorn.run(app, host=host, port=port)

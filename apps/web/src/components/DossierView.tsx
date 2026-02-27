@@ -1,413 +1,244 @@
-import { StartupDossier } from '@/lib/api'
-import { CompetitiveMatrix } from './CompetitiveMatrix'
-import { AssumptionTracker } from './AssumptionTracker'
-import { ValidationExperiments } from './ValidationExperiments'
-import { TAMEstimate } from './TAMEstimate'
-import { DestroyAnalysis } from './DestroyAnalysis'
-import { DistributionStrategy } from './DistributionStrategy'
-import { ConfidenceScore } from './ConfidenceScore'
-import { 
-  TrendingUp, 
-  DollarSign, 
-  Package, 
-  Truck, 
-  Target, 
-  Users, 
+'use client'
+
+import { useState } from 'react'
+import { VentureDossier, getPdfUrl, GraphData } from '@/lib/api'
+import VentureGraph from './VentureGraph'
+import {
+  FileText,
+  Search,
+  Target,
+  BarChart4,
+  Download,
+  ExternalLink,
+  CheckCircle,
   Lightbulb,
-  AlertTriangle,
-  CheckCircle2,
-  XCircle,
-  Zap,
-  Shield,
-  Crosshair,
-  TrendingDown
+  ArrowRight,
+  Zap
 } from 'lucide-react'
 
 interface DossierViewProps {
-  dossier: StartupDossier
+  dossier: VentureDossier
+  graphData?: GraphData
 }
 
-export default function DossierView({ dossier }: DossierViewProps) {
+type TabType = 'overview' | 'market' | 'competition' | 'strategy'
+
+export default function DossierView({ dossier, graphData }: DossierViewProps) {
+  const [activeTab, setActiveTab] = useState<TabType>('overview')
+
   if (!dossier) return null
 
+  const tabs = [
+    { id: 'overview', label: 'Overview', icon: Lightbulb },
+    { id: 'market', label: 'Market Research', icon: Search },
+    { id: 'competition', label: 'Competition', icon: Target },
+    { id: 'strategy', label: 'Strategy', icon: BarChart4 },
+  ]
+
   return (
-    <div className="space-y-6">
-      {/* Clarified Idea */}
-      {dossier.clarified_idea && (
-        <Section title="1. Clarified Idea" icon={Lightbulb}>
-          <InfoRow label="Problem" value={dossier.clarified_idea.problem} />
-          <InfoRow label="Solution" value={dossier.clarified_idea.solution} />
-          <InfoRow label="Target Customer" value={dossier.clarified_idea.target_customer} />
-          <InfoRow label="Value Proposition" value={dossier.clarified_idea.value_proposition} />
-          <List label="Key Assumptions" items={dossier.clarified_idea.assumptions} />
-        </Section>
-      )}
-
-      {/* Market Research */}
-      {dossier.market_research && (
-        <Section title="2. Market Research" icon={Target}>
-          <h4 className="font-semibold text-gray-900 mb-3">Competitors</h4>
-          {dossier.market_research.competitors.map((comp: any, i: number) => (
-            <div key={i} className="mb-4 p-4 bg-gray-50 rounded-lg">
-              <h5 className="font-semibold text-gray-900">{comp.name}</h5>
-              {comp.url && (
-                <a
-                  href={comp.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm text-primary-600 hover:underline"
-                >
-                  {comp.url}
-                </a>
-              )}
-              <p className="text-sm text-gray-700 mt-2">{comp.description}</p>
-              <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
-                <div>
-                  <span className="font-medium">Strengths:</span> {comp.strengths.join(', ')}
-                </div>
-                <div>
-                  <span className="font-medium">Weaknesses:</span> {comp.weaknesses.join(', ')}
-                </div>
-              </div>
-              {comp.pricing && (
-                <p className="text-sm text-gray-600 mt-1">Pricing: {comp.pricing}</p>
-              )}
-            </div>
-          ))}
-
-          <h4 className="font-semibold text-gray-900 mt-6 mb-3">Market Segments</h4>
-          {dossier.market_research.segments.map((seg: any, i: number) => (
-            <div key={i} className="mb-2">
-              <span className="font-medium">{seg.name}</span> ({seg.size_estimate})
-            </div>
-          ))}
-
-          <List label="Key Trends" items={dossier.market_research.trends} />
-        </Section>
-      )}
-
-      {/* Positioning */}
-      {dossier.positioning && (
-        <Section title="3. Positioning & Differentiation" icon={Target}>
-          <InfoRow label="Ideal Customer Profile" value={dossier.positioning.icp} />
-          <InfoRow label="Positioning Statement" value={dossier.positioning.positioning_statement} />
-          <List label="Differentiators" items={dossier.positioning.differentiators} />
-          <InfoRow label="Unique Value" value={dossier.positioning.unique_value} />
-        </Section>
-      )}
-
-      {/* MVP Plan */}
-      {dossier.mvp_plan && (
-        <Section title="4. MVP Plan" icon={Package}>
-          <h4 className="font-semibold text-gray-900 mb-3">Features</h4>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Feature</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Priority</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Effort</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Description</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {dossier.mvp_plan.features.map((feat: any, i: number) => (
-                  <tr key={i}>
-                    <td className="px-4 py-2 text-sm">{feat.name}</td>
-                    <td className="px-4 py-2 text-sm">
-                      <span className={`badge ${
-                        feat.priority === 'P0' ? 'badge-error' :
-                        feat.priority === 'P1' ? 'badge-warning' : 'badge-info'
-                      }`}>
-                        {feat.priority}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2 text-sm">{feat.effort}</td>
-                    <td className="px-4 py-2 text-sm">{feat.description}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <h4 className="font-semibold text-gray-900 mt-6 mb-3">4-Week Roadmap</h4>
-          {dossier.mvp_plan.roadmap.map((milestone: any, i: number) => (
-            <div key={i} className="mb-3">
-              <div className="font-medium">Week {milestone.week}: {milestone.goal}</div>
-              <ul className="list-disc list-inside text-sm text-gray-700 ml-4">
-                {milestone.deliverables.map((d: string, j: number) => (
-                  <li key={j}>{d}</li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </Section>
-      )}
-
-      {/* Landing Page */}
-      {dossier.landing_page && (
-        <Section title="5. Landing Page Copy" icon={TrendingUp}>
-          <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-6 rounded-lg mb-4">
-            <h3 className="text-2xl font-bold text-gray-900 mb-2">
-              {dossier.landing_page.headline}
-            </h3>
-            <p className="text-lg text-gray-700">{dossier.landing_page.subheadline}</p>
-          </div>
-          <List label="Value Propositions" items={dossier.landing_page.value_props} />
-          <InfoRow label="Call-to-Action" value={dossier.landing_page.cta} />
-
-          <h4 className="font-semibold text-gray-900 mt-4 mb-3">Pricing Tiers</h4>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {dossier.landing_page.pricing_tiers.map((tier: any, i: number) => (
-              <div key={i} className="border rounded-lg p-4">
-                <h5 className="font-semibold">{tier.name}</h5>
-                <p className="text-2xl font-bold text-primary-600">${tier.price}/mo</p>
-                <p className="text-sm text-gray-600 mt-2">{tier.description}</p>
-              </div>
-            ))}
-          </div>
-        </Section>
-      )}
-
-      {/* Marketing Plan (if selected) */}
-      {dossier.marketing_plan && (
-        <Section title="Marketing Strategy" icon={TrendingUp}>
-          <InfoRow label="Target Audience" value={dossier.marketing_plan.target_audience} />
-          <List label="Marketing Channels" items={dossier.marketing_plan.channels} />
-          <List label="Content Strategy" items={dossier.marketing_plan.content_strategy} />
-          <InfoRow label="Budget Allocation" value={dossier.marketing_plan.budget_allocation} />
-          <List label="KPIs" items={dossier.marketing_plan.kpis} />
-        </Section>
-      )}
-
-      {/* Supply Chain Plan (if selected) */}
-      {dossier.supply_chain_plan && (
-        <Section title="Supply Chain Management" icon={Truck}>
-          <List label="Suppliers" items={dossier.supply_chain_plan.suppliers} />
-          <InfoRow label="Lead Time" value={dossier.supply_chain_plan.lead_time} />
-          <List label="Logistics Strategy" items={dossier.supply_chain_plan.logistics} />
-          <List label="Risk Mitigation" items={dossier.supply_chain_plan.risk_mitigation} />
-        </Section>
-      )}
-
-      {/* Inventory Plan (if selected) */}
-      {dossier.inventory_plan && (
-        <Section title="Inventory Management" icon={Package}>
-          <InfoRow label="Inventory Model" value={dossier.inventory_plan.model} />
-          <InfoRow label="Reorder Point" value={dossier.inventory_plan.reorder_point} />
-          <InfoRow label="Safety Stock" value={dossier.inventory_plan.safety_stock} />
-          <List label="Tracking Methods" items={dossier.inventory_plan.tracking_methods} />
-        </Section>
-      )}
-
-      {/* Investor Debate */}
-      {dossier.debate && (
-        <Section title="6. Investor Debate" icon={Users}>
-          <List label="Bull Case" items={dossier.debate.bull_points} color="green" />
-          <List label="Bear Case" items={dossier.debate.skeptic_points} color="red" />
-          <InfoRow label="Synthesis" value={dossier.debate.synthesis} />
-          <List label="Risk Mitigations" items={dossier.debate.mitigations} />
-        </Section>
-      )}
-
-      {/* Finance */}
-      {dossier.finance && (
-        <Section title="7. Financial Model" icon={DollarSign}>
-          <div className="grid grid-cols-2 gap-4 mb-4">
-            <div>
-              <h4 className="font-semibold text-gray-900 mb-2">Inputs</h4>
-              <InfoRow label="CAC" value={`$${dossier.finance.inputs.cac}`} />
-              <InfoRow label="LTV" value={`$${dossier.finance.inputs.ltv}`} />
-              <InfoRow label="Monthly Churn" value={`${(dossier.finance.inputs.monthly_churn * 100).toFixed(1)}%`} />
-              <InfoRow label="Pricing" value={`$${dossier.finance.inputs.pricing}/mo`} />
-              <InfoRow label="Unit Cost" value={`$${dossier.finance.inputs.unit_cost}/mo`} />
-            </div>
-            <div>
-              <h4 className="font-semibold text-gray-900 mb-2">Outputs</h4>
-              <InfoRow label="LTV/CAC Ratio" value={`${dossier.finance.outputs.ltv_cac_ratio.toFixed(2)}x`} />
-              <InfoRow label="Payback Period" value={`${dossier.finance.outputs.payback_months.toFixed(1)} months`} />
-              <InfoRow label="Gross Margin" value={`${(dossier.finance.outputs.gross_margin * 100).toFixed(1)}%`} />
-              <InfoRow label="Break-even" value={`${dossier.finance.outputs.break_even_customers} customers`} />
-            </div>
-          </div>
-          <List label="Assumptions" items={dossier.finance.assumptions} />
-        </Section>
-      )}
-
-      {/* High-Impact Features */}
-
-      {/* Competitive Matrix */}
-      {dossier.competitive_matrix && (
-        <Section title="Competitive Matrix" icon={Crosshair}>
-          <CompetitiveMatrix matrix={dossier.competitive_matrix} />
-        </Section>
-      )}
-
-      {/* Assumption Tracker */}
-      {dossier.assumption_tracker && (
-        <Section title="Assumption Tracker" icon={AlertTriangle}>
-          <AssumptionTracker tracker={dossier.assumption_tracker} />
-        </Section>
-      )}
-
-      {/* Validation Experiments */}
-      {dossier.validation_experiments && dossier.validation_experiments.length > 0 && (
-        <Section title="Validation Experiments" icon={Zap}>
-          <ValidationExperiments experiments={dossier.validation_experiments} />
-        </Section>
-      )}
-
-      {/* TAM Estimate */}
-      {dossier.tam_estimate && (
-        <Section title="Market Size Estimation" icon={TrendingUp}>
-          <TAMEstimate estimate={dossier.tam_estimate} />
-        </Section>
-      )}
-
-      {/* Destroy Analysis */}
-      {dossier.destroy_analysis && (
-        <Section title="Destroy This Idea" icon={Shield}>
-          <DestroyAnalysis analysis={dossier.destroy_analysis} />
-        </Section>
-      )}
-
-      {/* Distribution Strategy */}
-      {dossier.distribution_strategy && (
-        <Section title="Distribution Strategy" icon={TrendingDown}>
-          <DistributionStrategy strategy={dossier.distribution_strategy} />
-        </Section>
-      )}
-
-      {/* Confidence Score */}
-      {dossier.confidence_score && (
-        <Section title="Analysis Confidence" icon={CheckCircle2}>
-          <ConfidenceScore score={dossier.confidence_score} />
-        </Section>
-      )}
-
-      {/* Final Report */}
-      {dossier.final_report && (
-        <Section title="8. Final Recommendation" icon={CheckCircle2}>
-          <div
-            className={`p-6 rounded-lg mb-4 ${
-              dossier.final_report.recommendation === 'GO'
-                ? 'bg-green-50 border-2 border-green-500'
-                : dossier.final_report.recommendation === 'NO_GO'
-                ? 'bg-red-50 border-2 border-red-500'
-                : 'bg-yellow-50 border-2 border-yellow-500'
-            }`}
+    <div className="space-y-8 animate-fadeIn">
+      {/* Tabs Navigation */}
+      <div className="flex p-1 bg-zinc-100 dark:bg-zinc-900 rounded-xl max-w-2xl">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id as TabType)}
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold rounded-lg transition-all ${activeTab === tab.id
+              ? 'bg-white dark:bg-zinc-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
+              : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300'
+              }`}
           >
-            <div className="flex items-center space-x-3 mb-2">
-              {dossier.final_report.recommendation === 'GO' ? (
-                <CheckCircle2 className="w-8 h-8 text-green-600" />
-              ) : dossier.final_report.recommendation === 'NO_GO' ? (
-                <XCircle className="w-8 h-8 text-red-600" />
-              ) : (
-                <AlertTriangle className="w-8 h-8 text-yellow-600" />
-              )}
-              <h3 className="text-3xl font-bold">{dossier.final_report.recommendation}</h3>
+            <tab.icon className="w-4 h-4" />
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Overview Tab */}
+      {activeTab === 'overview' && (
+        <div className="space-y-6">
+          <Section title="Venture Concept & Clarification" icon={Lightbulb}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="space-y-6">
+                <InfoBlock label="Core Problem" value={dossier.clarification?.core_problem} />
+                <InfoBlock label="Proposed Solution" value={dossier.clarification?.proposed_solution} />
+                <InfoBlock label="Target Customer" value={dossier.clarification?.target_customer} />
+              </div>
+              <div className="bg-zinc-50 dark:bg-zinc-950 p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800">
+                <h4 className="text-xs font-black text-zinc-400 uppercase tracking-widest mb-4">Strategic Assumptions</h4>
+                <ul className="space-y-3">
+                  {dossier.clarification?.key_assumptions.map((item, i) => (
+                    <li key={i} className="flex gap-3 text-sm text-zinc-600 dark:text-zinc-400">
+                      <CheckCircle className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
-            <p className="text-lg">
-              Overall Score: {dossier.final_report.scorecard.overall_score.toFixed(1)}/10
+          </Section>
+
+          {graphData && (
+            <div className="bg-white dark:bg-zinc-900 rounded-2xl p-8 border border-zinc-200 dark:border-zinc-800 shadow-sm">
+              <h3 className="text-lg font-bold mb-6 text-zinc-900 dark:text-zinc-100">Market Relationship Visualization</h3>
+              <VentureGraph data={graphData} />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Market Research Tab */}
+      {activeTab === 'market' && dossier.market_research && (
+        <div className="space-y-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-bold">Market Intelligence</h2>
+            <DownloadButton runId={dossier.run_id} type="market" />
+          </div>
+
+          <Section title="Synthesis" icon={Search}>
+            <p className="text-zinc-600 dark:text-zinc-400 leading-relaxed text-lg italic">
+              "{dossier.market_research.summary}"
             </p>
-          </div>
+          </Section>
 
-          <div className="grid grid-cols-2 gap-4 mb-4">
-            <InfoRow
-              label="Market Opportunity"
-              value={`${dossier.final_report.scorecard.market_opportunity}/10`}
-            />
-            <InfoRow
-              label="Competitive Advantage"
-              value={`${dossier.final_report.scorecard.competitive_advantage}/10`}
-            />
-            <InfoRow
-              label="Execution Feasibility"
-              value={`${dossier.final_report.scorecard.execution_feasibility}/10`}
-            />
-            <InfoRow
-              label="Financial Viability"
-              value={`${dossier.final_report.scorecard.financial_viability}/10`}
-            />
-          </div>
-
-          <InfoRow label="Reasoning" value={dossier.final_report.scorecard.reasoning} />
-          <List label="Key Insights" items={dossier.final_report.key_insights} />
-
-          <h4 className="font-semibold text-gray-900 mt-6 mb-3">Next Experiments</h4>
-          {dossier.final_report.next_experiments.map((exp: any, i: number) => (
-            <div key={i} className="mb-4 p-4 bg-blue-50 rounded-lg">
-              <h5 className="font-semibold">{exp.hypothesis}</h5>
-              <p className="text-sm mt-1">
-                <span className="font-medium">Test:</span> {exp.test}
-              </p>
-              <p className="text-sm">
-                <span className="font-medium">Success:</span> {exp.success_criteria}
-              </p>
-              <p className="text-sm">
-                <span className="font-medium">Timeline:</span> {exp.timeline}
-              </p>
+          <Section title="Market Gaps Identified" icon={Target}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {dossier.market_research.market_gaps.map((gap, i) => (
+                <div key={i} className="p-4 bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-800 rounded-xl text-indigo-900 dark:text-indigo-300 text-sm font-medium">
+                  {gap}
+                </div>
+              ))}
             </div>
-          ))}
-        </Section>
+          </Section>
+
+          <Section title="Data Sources & Citations" icon={FileText}>
+            <div className="space-y-3">
+              {dossier.market_research.citations.map((cit, i) => (
+                <div key={i} className="flex items-start gap-4 p-4 rounded-xl border border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm">
+                  <div className="p-2 bg-zinc-50 dark:bg-zinc-800 rounded-lg">
+                    <ExternalLink className="w-4 h-4 text-zinc-400" />
+                  </div>
+                  <div>
+                    <a href={cit.url} target="_blank" rel="noreferrer" className="text-sm font-bold text-zinc-900 dark:text-zinc-100 hover:text-indigo-600 transition-colors">
+                      {cit.title || 'Source'}
+                    </a>
+                    <p className="text-xs text-zinc-500 mt-1 line-clamp-1">{cit.url}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Section>
+        </div>
+      )}
+
+      {/* Competitive Analysis Tab */}
+      {activeTab === 'competition' && dossier.competitive_analysis && (
+        <div className="space-y-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-bold">Competitive Positioning</h2>
+            <DownloadButton runId={dossier.run_id} type="competition" />
+          </div>
+
+          <Section title="Overlap Assessment" icon={Target}>
+            <p className="text-zinc-600 dark:text-zinc-400">{dossier.competitive_analysis.overlap_assessment}</p>
+          </Section>
+
+          <Section title="Competitor Comparison" icon={BarChart4}>
+            <div className="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-800">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-zinc-50 dark:bg-zinc-800/50 text-zinc-500 uppercase text-[10px] font-black tracking-widest">
+                  <tr>
+                    <th className="px-6 py-4">Competitor</th>
+                    <th className="px-6 py-4">Strategic Focus</th>
+                    <th className="px-6 py-4">Key Advantage</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
+                  {dossier.competitive_analysis.competitor_comparison.map((comp: any, i: number) => (
+                    <tr key={i} className="hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-colors">
+                      <td className="px-6 py-4 font-bold text-zinc-900 dark:text-zinc-100">{comp.competitor || comp.name}</td>
+                      <td className="px-6 py-4 text-zinc-600 dark:text-zinc-400">{comp.focus || 'N/A'}</td>
+                      <td className="px-6 py-4 text-zinc-600 dark:text-zinc-400">{comp.advantage || 'Multi-feature'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Section>
+        </div>
+      )}
+
+      {/* Strategy Tab */}
+      {activeTab === 'strategy' && dossier.strategy && (
+        <div className="space-y-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-bold">Winning Strategy</h2>
+            <DownloadButton runId={dossier.run_id} type="strategy" />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="md:col-span-2 space-y-6">
+              <Section title="Ideal Customer Profile (ICP)" icon={Target}>
+                <p className="text-zinc-600 dark:text-zinc-400 leading-relaxed font-medium">{dossier.strategy.icp}</p>
+              </Section>
+              <Section title="Differentiation Angle" icon={Zap}>
+                <div className="p-6 bg-indigo-600 rounded-2xl text-white shadow-xl shadow-indigo-600/20">
+                  <p className="text-xl font-bold italic leading-relaxed">
+                    "{dossier.strategy.differentiation_angle}"
+                  </p>
+                </div>
+              </Section>
+            </div>
+
+            <div className="space-y-6">
+              <Section title="Positioning Statement" icon={BarChart4}>
+                <p className="text-sm text-zinc-600 dark:text-zinc-400 italic">"{dossier.strategy.positioning_statement}"</p>
+              </Section>
+              <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm transition-all hover:shadow-md">
+                <h3 className="text-sm font-black text-indigo-600 uppercase tracking-widest mb-4">Strategic Focus</h3>
+                <p className="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">{dossier.strategy.strategic_focus}</p>
+                <ArrowRight className="w-5 h-5 mt-4 text-indigo-600" />
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
 }
 
-function Section({
-  title,
-  icon: Icon,
-  children,
-}: {
-  title: string
-  icon: any
-  children: React.ReactNode
-}) {
+function Section({ title, icon: Icon, children }: { title: string; icon: any; children: React.ReactNode }) {
   return (
-    <div className="card">
-      <div className="flex items-center space-x-2 mb-4">
-        <Icon className="w-6 h-6 text-primary-600" />
-        <h3 className="text-xl font-bold text-gray-900">{title}</h3>
+    <div className="bg-white dark:bg-zinc-900 rounded-2xl p-8 border border-zinc-200 dark:border-zinc-800 shadow-sm transition-all hover:shadow-md">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="p-2 bg-zinc-50 dark:bg-zinc-800 rounded-lg">
+          <Icon className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+        </div>
+        <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">{title}</h3>
       </div>
       {children}
     </div>
   )
 }
 
-function InfoRow({ label, value }: { label: string; value: string }) {
+function InfoBlock({ label, value }: { label: string; value?: string }) {
   return (
-    <div className="mb-3">
-      <span className="font-medium text-gray-700">{label}:</span>{' '}
-      <span className="text-gray-900">{value}</span>
+    <div>
+      <h4 className="text-xs font-black text-zinc-400 uppercase tracking-widest mb-2">{label}</h4>
+      <p className="text-zinc-900 dark:text-zinc-100 font-medium leading-relaxed">{value || 'Pending...'}</p>
     </div>
   )
 }
 
-function List({
-  label,
-  items,
-  color = 'blue',
-}: {
-  label: string
-  items: string[]
-  color?: 'blue' | 'green' | 'red'
-}) {
-  const colorClass =
-    color === 'green'
-      ? 'text-green-700'
-      : color === 'red'
-      ? 'text-red-700'
-      : 'text-gray-700'
-
+function DownloadButton({ runId, type }: { runId: string; type: any }) {
   return (
-    <div className="mb-4">
-      <h4 className="font-semibold text-gray-900 mb-2">{label}</h4>
-      <ul className={`list-disc list-inside space-y-1 ${colorClass}`}>
-        {items.map((item, i) => (
-          <li key={i}>{item}</li>
-        ))}
-      </ul>
-    </div>
+    <a
+      href={getPdfUrl(runId, type)}
+      download
+      className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-indigo-600/20"
+    >
+      <Download className="w-4 h-4" />
+      PDF Report
+    </a>
   )
 }

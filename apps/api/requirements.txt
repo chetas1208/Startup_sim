@@ -17,4 +17,7 @@ weasyprint==60.2
 pytest==7.4.4
 pytest-asyncio==0.23.3
 ruff==0.1.14
-mypy==1.8.0
+psycopg2-binary==2.9.9
+reportlab==4.0.9
+sqlalchemy==2.0.25
+sqlmodel==0.0.14

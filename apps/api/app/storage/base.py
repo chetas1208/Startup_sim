@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from typing import List, Optional
 import uuid
 
-from app.models.dossier import StartupDossier
+from shared.models import VentureDossier
 
 
 class StorageBackend(ABC):
@@ -15,12 +15,12 @@ class StorageBackend(ABC):
         pass
     
     @abstractmethod
-    async def save_dossier(self, dossier: StartupDossier):
+    async def save_dossier(self, dossier: VentureDossier):
         """Save a dossier."""
         pass
     
     @abstractmethod
-    async def get_dossier(self, run_id: str) -> Optional[StartupDossier]:
+    async def get_dossier(self, run_id: str) -> Optional[VentureDossier]:
         """Get a dossier by run_id."""
         pass
     

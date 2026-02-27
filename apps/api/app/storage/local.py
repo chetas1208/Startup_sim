@@ -20,13 +20,13 @@ class LocalStorageBackend(StorageBackend):
         self.runs_path.mkdir(parents=True, exist_ok=True)
         self.artifacts_path.mkdir(parents=True, exist_ok=True)
     
-    async def save_dossier(self, dossier: StartupDossier):
+    async def save_dossier(self, dossier: VentureDossier):
         """Save dossier as JSON file."""
         file_path = self.runs_path / f"{dossier.run_id}.json"
         with open(file_path, "w") as f:
             json.dump(dossier.model_dump(mode="json"), f, indent=2, default=str)
     
-    async def get_dossier(self, run_id: str) -> Optional[StartupDossier]:
+    async def get_dossier(self, run_id: str) -> Optional[VentureDossier]:
         """Load dossier from JSON file."""
         file_path = self.runs_path / f"{run_id}.json"
         if not file_path.exists():
@@ -34,7 +34,7 @@ class LocalStorageBackend(StorageBackend):
         
         with open(file_path, "r") as f:
             data = json.load(f)
-            return StartupDossier(**data)
+            return VentureDossier(**data)
     
     async def list_runs(self, limit: int = 20) -> List[dict]:
         """List recent runs."""
@@ -48,7 +48,7 @@ class LocalStorageBackend(StorageBackend):
                 data = json.load(f)
                 runs.append({
                     "run_id": data["run_id"],
-                    "raw_idea": data["raw_idea"],
+                    "idea_text": data.get("idea_text") or data.get("raw_idea"),
                     "status": data["status"],
                     "created_at": data["created_at"],
                 })

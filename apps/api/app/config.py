@@ -13,8 +13,10 @@ class Settings(BaseSettings):
     api_port: int = 8000
     cors_origins: str = "http://localhost:5173,http://localhost:3000"
     
-    # OpenAI (Required)
+    # LLM Provider (OpenAI-compatible — works with NVIDIA NIM)
     openai_api_key: str
+    openai_base_url: Optional[str] = None
+    llm_model: str = "gpt-4-turbo-preview"
     
     # Tavily (Required)
     tavily_api_key: str
@@ -31,9 +33,16 @@ class Settings(BaseSettings):
     aws_s3_bucket: Optional[str] = None
     aws_dynamodb_table: Optional[str] = None
     
+    # Database
+    database_url: Optional[str] = None
+    
+    # PDF generation
+    pdf_storage_path: str = "./artifacts/pdfs"
+    
     # Optional integrations
     yutori_api_key: Optional[str] = None
     senso_api_key: Optional[str] = None
+    fastino_api_key: Optional[str] = None
     modulate_api_key: Optional[str] = None
     numeric_api_key: Optional[str] = None
     
@@ -46,7 +55,7 @@ class Settings(BaseSettings):
         return bool(self.aws_access_key_id and self.aws_s3_bucket)
     
     class Config:
-        env_file = ".env"
+        env_file = "../../.env"
         case_sensitive = False
 
 
