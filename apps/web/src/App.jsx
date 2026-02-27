@@ -1,40 +1,66 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
-import HomePage from './pages/HomePage'
-import RunPage from './pages/RunPage'
-import HistoryPage from './pages/HistoryPage'
+import { useState, useEffect } from 'react';
+import LandingPage from './pages/LandingPage';
+import ResearchProgress from './pages/ResearchProgress';
+import Dashboard from './pages/Dashboard';
+import { getResults } from './services/api';
 
-function App() {
+const SCREENS = {
+  LANDING: 'landing',
+  RESEARCH: 'research',
+  DASHBOARD: 'dashboard',
+};
+
+export default function App() {
+  const [screen, setScreen] = useState(SCREENS.LANDING);
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState(null);
+  const [transitioning, setTransitioning] = useState(false);
+
+  const transition = (nextScreen) => {
+    setTransitioning(true);
+    setTimeout(() => {
+      setScreen(nextScreen);
+      setTransitioning(false);
+    }, 300);
+  };
+
+  const handleSubmit = (q) => {
+    setQuery(q);
+    transition(SCREENS.RESEARCH);
+  };
+
+  const handleResearchComplete = async () => {
+    const data = await getResults('mock-run-001');
+    data.query = query;
+    setResults(data);
+    transition(SCREENS.DASHBOARD);
+  };
+
+  const handleNewSearch = () => {
+    setQuery('');
+    setResults(null);
+    transition(SCREENS.LANDING);
+  };
+
+  useEffect(() => {
+    if (screen === SCREENS.LANDING) {
+      window.scrollTo(0, 0);
+    }
+  }, [screen]);
+
   return (
-    <Router>
-      <div className="min-h-screen bg-gray-50">
-        <nav className="bg-white shadow-sm border-b">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between h-16 items-center">
-              <div className="flex items-center">
-                <h1 className="text-2xl font-bold text-blue-600">
-                  Startup Sim Agent
-                </h1>
-              </div>
-              <div className="flex space-x-4">
-                <a href="/" className="text-gray-700 hover:text-blue-600 px-3 py-2">
-                  New Simulation
-                </a>
-                <a href="/history" className="text-gray-700 hover:text-blue-600 px-3 py-2">
-                  History
-                </a>
-              </div>
-            </div>
-          </div>
-        </nav>
-
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/run/:runId" element={<RunPage />} />
-          <Route path="/history" element={<HistoryPage />} />
-        </Routes>
-      </div>
-    </Router>
-  )
+    <div
+      className={`min-h-screen transition-opacity duration-300 ${
+        transitioning ? 'opacity-0' : 'opacity-100'
+      }`}
+    >
+      {screen === SCREENS.LANDING && <LandingPage onSubmit={handleSubmit} />}
+      {screen === SCREENS.RESEARCH && (
+        <ResearchProgress query={query} onComplete={handleResearchComplete} />
+      )}
+      {screen === SCREENS.DASHBOARD && results && (
+        <Dashboard data={results} onNewSearch={handleNewSearch} />
+      )}
+    </div>
+  );
 }
-
-export default App

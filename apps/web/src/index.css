@@ -2,16 +2,100 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #334155 #0a0e17;
 }
 
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+*::-webkit-scrollbar {
+  width: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: #0a0e17;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 3px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+::selection {
+  background: rgba(56, 189, 248, 0.25);
+  color: #e2e8f0;
+}
+
+@layer base {
+  body {
+    @apply bg-sg-bg text-sg-text;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+}
+
+@layer components {
+  .glass-panel {
+    @apply bg-sg-surface/80 backdrop-blur-sm border border-sg-border rounded-xl;
+  }
+
+  .glass-panel-hover {
+    @apply glass-panel hover:border-sg-borderLight hover:bg-sg-surfaceLight/60 transition-all duration-200;
+  }
+
+  .btn-primary {
+    @apply px-6 py-3 bg-sg-accent text-sg-bg font-semibold rounded-lg
+           hover:bg-sg-accentDim transition-all duration-200
+           focus:outline-none focus:ring-2 focus:ring-sg-accent/50 focus:ring-offset-2 focus:ring-offset-sg-bg;
+  }
+
+  .btn-ghost {
+    @apply px-4 py-2 text-sg-textMuted border border-sg-border rounded-lg
+           hover:text-sg-text hover:border-sg-borderLight transition-all duration-200;
+  }
+
+  .section-title {
+    @apply text-xl font-semibold text-sg-text mb-1;
+  }
+
+  .section-subtitle {
+    @apply text-sm text-sg-textMuted mb-6;
+  }
+
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .badge-direct {
+    @apply badge bg-sg-red/15 text-sg-red border border-sg-red/20;
+  }
+
+  .badge-indirect {
+    @apply badge bg-sg-yellow/15 text-sg-yellow border border-sg-yellow/20;
+  }
+
+  .badge-emerging {
+    @apply badge bg-sg-green/15 text-sg-green border border-sg-green/20;
+  }
+}
+
+@keyframes ripple {
+  0% { transform: scale(0.8); opacity: 1; }
+  100% { transform: scale(2.5); opacity: 0; }
+}
+
+.ripple-ring {
+  animation: ripple 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.ripple-ring-delayed {
+  animation: ripple 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  animation-delay: 0.6s;
+}
+
+.ripple-ring-delayed-2 {
+  animation: ripple 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  animation-delay: 1.2s;
 }
