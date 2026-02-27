@@ -639,7 +639,7 @@ video {
   }
 
   ::-webkit-scrollbar-track {
-    background-color: rgb(var(--bg-muted));
+    background-color: rgb(var(--muted));
   }
 
   ::-webkit-scrollbar-thumb {
@@ -670,7 +670,7 @@ video {
   transition-property: all;
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   transition-duration: 150ms;
-    background-color: rgb(var(--bg-card));
+    background-color: rgb(var(--card));
     border: 1px solid rgb(var(--border));
     color: rgb(var(--text-primary));
 }
@@ -709,7 +709,7 @@ video {
   transition-property: all;
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   transition-duration: 150ms;
-    background-color: rgb(var(--bg-card));
+    background-color: rgb(var(--card));
     border: 1px solid rgb(var(--border));
 }
 .dark .scorecard {
@@ -1216,35 +1216,58 @@ video {
    ============================================================================ */
 
 :root {
-  /* Light Mode - RGB values for Tailwind alpha support */
-  --bg: 244 244 245;
-  --bg-card: 255 255 255;
-  --bg-muted: 249 250 251;
+  /* Light Mode */
+  --bg: 250 250 250;
+  /* zinc-50 */
+  --card: 255 255 255;
+  --muted: 244 244 245;
+  /* zinc-100 */
   --border: 228 228 231;
+  /* zinc-200 */
   --text-primary: 24 24 27;
-  --text-secondary: 113 113 122;
+  /* zinc-900 */
+  --text-secondary: 82 82 91;
+  /* zinc-600 */
   --accent: 79 70 229;
+  /* indigo-600 */
   --accent-hover: 67 56 202;
+  /* indigo-700 */
   --accent-soft: 238 242 255;
+  /* indigo-50 */
   --success: 5 150 105;
-  --warning: 217 119 6;
+  /* emerald-600 */
+  --warning: 245 158 11;
+  /* amber-500 */
   --danger: 225 29 72;
+  /* rose-600 */
 }
 
 .dark {
-  /* Dark Mode - RGB values for Tailwind alpha support */
+  /* Dark Mode */
   --bg: 9 9 11;
-  --bg-card: 24 24 27;
-  --bg-muted: 39 39 42;
-  --border: 63 63 70;
-  --text-primary: 250 250 250;
+  /* zinc-950 */
+  --card: 24 24 27;
+  /* zinc-900 */
+  --muted: 39 39 42;
+  /* zinc-800 */
+  --border: 39 39 42;
+  /* zinc-800 */
+  --text-primary: 244 244 245;
+  /* zinc-100 */
   --text-secondary: 161 161 170;
+  /* zinc-400 */
   --accent: 99 102 241;
+  /* indigo-500 */
   --accent-hover: 129 140 248;
-  --accent-soft: 49 46 129;
+  /* indigo-400 */
+  --accent-soft: 30 27 75;
+  /* indigo-900 at lower intensity */
   --success: 16 185 129;
-  --warning: 245 158 11;
+  /* emerald-500 */
+  --warning: 251 191 36;
+  /* amber-400 */
   --danger: 244 63 94;
+  /* rose-500 */
 }
 
 /* ============================================================================
@@ -1340,4 +1363,3 @@ video {
     padding-right: 2rem;
   }
 }
-

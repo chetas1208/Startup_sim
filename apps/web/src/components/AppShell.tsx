@@ -16,81 +16,89 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     setMounted(true)
   }, [])
 
-  const isHomePage = pathname === '/'
+  const navLinks = [
+    { href: '/', label: 'Simulator' },
+    { href: '/history', label: 'History' },
+    { href: '/about', label: 'About' },
+  ]
 
   return (
-    <div className="min-h-screen bg-white dark:bg-zinc-950 transition-colors duration-200">
+    <div className="min-h-screen flex flex-col" style={{ backgroundColor: 'rgb(var(--bg))' }}>
       {/* Navigation */}
-      <nav className="sticky top-0 z-50 border-b border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md">
+      <nav
+        className="sticky top-0 z-50 backdrop-blur-md"
+        style={{
+          borderBottom: '1px solid rgb(var(--border))',
+          backgroundColor: 'rgb(var(--card) / 0.85)',
+        }}
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
-            <Link href="/" className="flex items-center space-x-3 group">
-              <div className="p-2 rounded-lg bg-gradient-to-br from-blue-600 to-purple-600 group-hover:shadow-lg transition-shadow">
+            <Link href="/" className="flex items-center gap-3 group">
+              <div
+                className="p-2 rounded-lg"
+                style={{ backgroundColor: 'rgb(var(--accent))' }}
+              >
                 <Sparkles className="w-5 h-5 text-white" />
               </div>
-              <span className="font-bold text-lg text-zinc-900 dark:text-white hidden sm:inline">
+              <span
+                className="font-bold text-lg hidden sm:inline"
+                style={{ color: 'rgb(var(--text-primary))' }}
+              >
                 Startup Sim
               </span>
             </Link>
 
             {/* Center Navigation */}
-            <div className="hidden md:flex items-center space-x-8">
-              <Link
-                href="/"
-                className={`text-sm font-medium transition-colors ${
-                  pathname === '/'
-                    ? 'text-blue-600 dark:text-blue-400'
-                    : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
-                }`}
-              >
-                Simulator
-              </Link>
-              <Link
-                href="/history"
-                className={`text-sm font-medium transition-colors ${
-                  pathname === '/history'
-                    ? 'text-blue-600 dark:text-blue-400'
-                    : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
-                }`}
-              >
-                History
-              </Link>
-              <Link
-                href="/about"
-                className={`text-sm font-medium transition-colors ${
-                  pathname === '/about'
-                    ? 'text-blue-600 dark:text-blue-400'
-                    : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
-                }`}
-              >
-                About
-              </Link>
+            <div className="hidden md:flex items-center gap-1">
+              {navLinks.map((link) => {
+                const isActive = pathname === link.href
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className="text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+                    style={{
+                      color: isActive
+                        ? 'rgb(var(--accent))'
+                        : 'rgb(var(--text-secondary))',
+                      backgroundColor: isActive
+                        ? 'rgb(var(--accent-soft))'
+                        : 'transparent',
+                    }}
+                  >
+                    {link.label}
+                  </Link>
+                )
+              })}
             </div>
 
             {/* Right Actions */}
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center gap-1">
               {mounted && (
                 <button
                   onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                  className="p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                  className="p-2.5 rounded-lg transition-colors"
+                  style={{ color: 'rgb(var(--text-secondary))' }}
                   aria-label="Toggle theme"
                 >
                   {theme === 'dark' ? (
-                    <Sun className="w-5 h-5 text-zinc-600 dark:text-zinc-400" />
+                    <Sun className="w-[18px] h-[18px]" />
                   ) : (
-                    <Moon className="w-5 h-5 text-zinc-600" />
+                    <Moon className="w-[18px] h-[18px]" />
                   )}
                 </button>
               )}
               <a
-                href="https://github.com"
+                href="https://github.com/chetas1208/Startup_sim"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                className="p-2.5 rounded-lg transition-colors"
+                style={{ color: 'rgb(var(--text-secondary))' }}
                 aria-label="GitHub"
               >
-                <Github className="w-5 h-5 text-zinc-600 dark:text-zinc-400" />
+                <Github className="w-[18px] h-[18px]" />
               </a>
             </div>
           </div>
@@ -98,27 +106,32 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </nav>
 
       {/* Main Content */}
-      <main className="flex-1">
-        {children}
-      </main>
+      <main className="flex-1">{children}</main>
 
       {/* Footer */}
-      <footer className="border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 mt-16">
+      <footer
+        className="mt-auto"
+        style={{
+          borderTop: '1px solid rgb(var(--border))',
+          backgroundColor: 'rgb(var(--muted))',
+        }}
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex flex-col md:flex-row items-center justify-between">
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              © 2024 Startup Simulator. Built with AI agents.
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+            <p className="text-sm" style={{ color: 'rgb(var(--text-secondary))' }}>
+              © 2025 Startup Simulator. Built with AI agents.
             </p>
-            <div className="flex items-center space-x-6 mt-4 md:mt-0">
-              <a href="#" className="text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white">
-                Privacy
-              </a>
-              <a href="#" className="text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white">
-                Terms
-              </a>
-              <a href="#" className="text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white">
-                Contact
-              </a>
+            <div className="flex items-center gap-6">
+              {['Privacy', 'Terms', 'Contact'].map((label) => (
+                <a
+                  key={label}
+                  href="#"
+                  className="text-sm transition-colors hover:underline"
+                  style={{ color: 'rgb(var(--text-secondary))' }}
+                >
+                  {label}
+                </a>
+              ))}
             </div>
           </div>
         </div>
