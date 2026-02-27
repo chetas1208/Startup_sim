@@ -1,0 +1,54 @@
+services:
+  - type: web
+    name: startup-sim-web
+    env: static
+    buildCommand: cd apps/web && npm install && npm run build
+    staticPublishPath: apps/web/dist
+    envVars:
+      - key: VITE_API_URL
+        sync: false
+
+  - type: web
+    name: startup-sim-api
+    env: python
+    region: oregon
+    plan: starter
+    buildCommand: cd apps/api && pip install -r requirements.txt
+    startCommand: cd apps/api && uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: TAVILY_API_KEY
+        sync: false
+      - key: NEO4J_URI
+        sync: false
+      - key: NEO4J_USER
+        sync: false
+      - key: NEO4J_PASSWORD
+        sync: false
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      - key: AWS_REGION
+        value: us-east-1
+      - key: AWS_S3_BUCKET
+        sync: false
+      - key: AWS_DYNAMODB_TABLE
+        sync: false
+      - key: ENVIRONMENT
+        value: production
+      - key: YUTORI_API_KEY
+        sync: false
+      - key: SENSO_API_KEY
+        sync: false
+      - key: MODULATE_API_KEY
+        sync: false
+      - key: NUMERIC_API_KEY
+        sync: false
+
+databases:
+  - name: startup-sim-neo4j
+    plan: starter
+    databaseName: neo4j
+    user: neo4j

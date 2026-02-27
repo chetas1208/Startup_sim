@@ -1,0 +1,61 @@
+{
+  "template_type": "saas_startup",
+  "assumptions": {
+    "cac": {
+      "min": 100,
+      "typical": 500,
+      "max": 2000,
+      "description": "Customer Acquisition Cost"
+    },
+    "ltv": {
+      "min": 500,
+      "typical": 3000,
+      "max": 10000,
+      "description": "Customer Lifetime Value"
+    },
+    "monthly_churn": {
+      "min": 0.02,
+      "typical": 0.05,
+      "max": 0.15,
+      "description": "Monthly customer churn rate"
+    },
+    "pricing": {
+      "min": 29,
+      "typical": 99,
+      "max": 499,
+      "description": "Monthly subscription price"
+    },
+    "unit_cost": {
+      "min": 5,
+      "typical": 20,
+      "max": 100,
+      "description": "Cost per customer per month"
+    }
+  },
+  "metrics": [
+    "ltv_cac_ratio",
+    "payback_months",
+    "gross_margin",
+    "break_even_customers"
+  ],
+  "benchmarks": {
+    "ltv_cac_ratio": {
+      "poor": 1.5,
+      "acceptable": 3.0,
+      "good": 5.0,
+      "excellent": 7.0
+    },
+    "payback_months": {
+      "excellent": 6,
+      "good": 12,
+      "acceptable": 18,
+      "poor": 24
+    },
+    "gross_margin": {
+      "poor": 0.5,
+      "acceptable": 0.7,
+      "good": 0.8,
+      "excellent": 0.9
+    }
+  }
+}
