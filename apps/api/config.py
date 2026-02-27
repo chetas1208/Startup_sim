@@ -49,6 +49,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = False
+        extra = "ignore"  # allow extra env vars (e.g. VITE_API_URL) without validation error
 
 
 settings = Settings()

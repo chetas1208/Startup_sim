@@ -2,8 +2,10 @@
 
 See: https://docs.reka.ai/vision/
 """
+from pathlib import Path
+from typing import Optional, Dict, Any, List, Union
+
 import httpx
-from typing import Optional, Dict, Any, List
 
 from config import settings
 
@@ -89,6 +91,52 @@ class RekaClient:
                 return response.json()
         except Exception as e:
             print(f"Reka video_qa_chat error: {e}")
+            return None
+
+    async def quicktag(self, video_url: str) -> Optional[Dict[str, Any]]:
+        """
+        Quick metadata tagging by video URL. Returns tags including ExpectedCTR,
+        ViralityScore, MoodTone. See https://docs.reka.ai/vision/metadata-tagging
+        """
+        if not self.is_enabled():
+            return None
+        try:
+            async with httpx.AsyncClient(timeout=120.0) as client:
+                response = await client.post(
+                    f"{self.base_url}/v1/qa/quicktag",
+                    headers={"X-Api-Key": self.api_key},
+                    data={"video_url": video_url},
+                )
+                response.raise_for_status()
+                return response.json()
+        except Exception as e:
+            print(f"Reka quicktag error: {e}")
+            return None
+
+    async def quicktag_with_file(self, video_path: Union[str, Path]) -> Optional[Dict[str, Any]]:
+        """
+        Quick metadata tagging by uploading a video file. Returns tags including
+        ExpectedCTR, ViralityScore, MoodTone. See https://docs.reka.ai/vision/metadata-tagging
+        """
+        if not self.is_enabled():
+            return None
+        path = Path(video_path)
+        if not path.exists():
+            print(f"Reka quicktag: file not found {path}")
+            return None
+        content_type = "video/webm" if path.suffix.lower() == ".webm" else "video/mp4"
+        try:
+            with open(path, "rb") as f:
+                async with httpx.AsyncClient(timeout=120.0) as client:
+                    response = await client.post(
+                        f"{self.base_url}/v1/qa/quicktag",
+                        headers={"X-Api-Key": self.api_key},
+                        files={"video": (path.name, f, content_type)},
+                    )
+                    response.raise_for_status()
+                    return response.json()
+        except Exception as e:
+            print(f"Reka quicktag (file) error: {e}")
             return None
 
     async def upload_video_by_url(
