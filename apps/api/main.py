@@ -192,6 +192,29 @@ async def download_pdf(run_id: str):
         raise HTTPException(status_code=404, detail="Report not found")
 
 
+@app.get("/api/runs/{run_id}/video-analysis")
+async def get_video_analysis(run_id: str):
+    """
+    Return the video analysis results for a run.
+    Returns 202 while still processing, 200 when ready.
+    Lightweight endpoint the frontend can poll independently of the full dossier.
+    """
+    storage = get_storage_backend()
+    dossier = await storage.get_dossier(run_id)
+
+    if not dossier:
+        raise HTTPException(status_code=404, detail="Run not found")
+
+    if dossier.video_analysis is None:
+        from fastapi.responses import JSONResponse
+        return JSONResponse(
+            status_code=202,
+            content={"status": "processing", "message": "Video analysis is still running."},
+        )
+
+    return dossier.video_analysis
+
+
 @app.post("/api/runs/{run_id}/ask", response_model=AskQuestionResponse)
 async def ask_question(run_id: str, request: AskQuestionRequest):
     """Ask a question about the dossier using RAG (if Senso enabled)."""

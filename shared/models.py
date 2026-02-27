@@ -183,6 +183,9 @@ class StartupDossier(BaseModel):
     debate: Optional[DebateSynthesis] = None
     finance: Optional[FinanceModel] = None
     final_report: Optional[FinalReport] = None
+
+    # Async enrichment (runs in background, populated when ready)
+    video_analysis: Optional[Dict[str, Any]] = None
     
     # Metadata
     provenance: Dict[str, Any] = Field(default_factory=dict)
