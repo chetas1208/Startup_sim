@@ -1,4 +1,5 @@
 """Workflow orchestrator for the startup simulation."""
+import asyncio
 import json
 import logging
 from datetime import datetime
@@ -32,6 +33,7 @@ from services.integrations.senso_client import get_senso_client
 from services.integrations.modulate_client import get_modulate_client
 from services.integrations.numeric_client import get_numeric_client
 from services.report_generator import generate_reports
+from services.video_analysis import analyze_competitor_videos
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +51,7 @@ class WorkflowOrchestrator:
     
     async def run_workflow(self, run_id: str, idea: str):
         """Run the complete workflow."""
+        video_task = None
         try:
             logger.info(f"Starting workflow for run {run_id}")
             
@@ -71,6 +74,12 @@ class WorkflowOrchestrator:
             
             # Store in Neo4j
             await self._store_market_graph(run_id, idea, market, [])
+
+            # Fire-and-forget: video analysis runs concurrently with
+            # the remaining pipeline so the main results are not delayed.
+            video_task = asyncio.create_task(
+                self._run_video_analysis_background(run_id, idea)
+            )
             
             # Step 3: Positioning
             await self._update_step(dossier, AgentStep.POSITIONING)
@@ -128,12 +137,22 @@ class WorkflowOrchestrator:
             if self.senso.is_enabled():
                 await self.senso.index_dossier(run_id, dossier)
             
-            # Mark complete
+            # Mark complete — the main pipeline is done; video_analysis
+            # may still be running and will update the dossier on its own.
             dossier.status = RunStatus.COMPLETED
             dossier.updated_at = datetime.utcnow()
             await self.storage.save_dossier(dossier)
             
             logger.info(f"Workflow completed for run {run_id}")
+
+            # Don't abandon the video task — let it finish and persist
+            # its results even after the main pipeline is done.
+            if video_task and not video_task.done():
+                logger.info(f"Video analysis still running for {run_id}; awaiting in background")
+                try:
+                    await video_task
+                except Exception:
+                    pass  # errors already handled inside the task
             
         except Exception as e:
             logger.error(f"Workflow error for run {run_id}: {e}", exc_info=True)
@@ -343,6 +362,38 @@ class WorkflowOrchestrator:
         except Exception as e:
             logger.warning(f"Neo4j storage failed: {e}")
     
+    async def _run_video_analysis_background(self, run_id: str, idea: str):
+        """
+        Run video analysis asynchronously.  Saves the result directly to the
+        dossier so the SSE stream / polling endpoint picks it up automatically.
+        This never raises — errors are logged and the dossier field is set to
+        a result with an error message.
+        """
+        try:
+            logger.info(f"Starting background video analysis for run {run_id}")
+            result = await analyze_competitor_videos(idea, max_videos=3)
+            dossier = await self.storage.get_dossier(run_id)
+            dossier.video_analysis = result.model_dump()
+            dossier.updated_at = datetime.utcnow()
+            dossier.provenance["video_analysis_completed"] = datetime.utcnow().isoformat()
+            await self.storage.save_dossier(dossier)
+            logger.info(
+                f"Video analysis completed for run {run_id}: "
+                f"{len(result.videos)} video(s)"
+            )
+        except Exception as e:
+            logger.error(f"Background video analysis failed for run {run_id}: {e}", exc_info=True)
+            try:
+                dossier = await self.storage.get_dossier(run_id)
+                dossier.video_analysis = {
+                    "videos": [],
+                    "message": f"Video analysis failed: {e}",
+                }
+                dossier.updated_at = datetime.utcnow()
+                await self.storage.save_dossier(dossier)
+            except Exception:
+                logger.error(f"Could not persist video analysis error for {run_id}")
+
     def _parse_json_result(self, result: Any) -> Dict[str, Any]:
         """Parse CrewAI result to JSON."""
         if isinstance(result, dict):
