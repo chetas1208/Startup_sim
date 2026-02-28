@@ -36,6 +36,7 @@ class Settings(BaseSettings):
     senso_api_key: Optional[str] = None
     modulate_api_key: Optional[str] = None
     numeric_api_key: Optional[str] = None
+    reka_api_key: Optional[str] = None
     
     @property
     def is_production(self) -> bool:
@@ -48,6 +49,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = False
+        extra = "ignore"  # allow extra env vars (e.g. VITE_API_URL) without validation error
 
 
 settings = Settings()
