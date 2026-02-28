@@ -9,47 +9,23 @@ const config: Config = {
   darkMode: 'class',
   theme: {
     extend: {
-      colors: {
-        // Semantic colors mapped to CSS variables
-        bg: 'rgb(var(--bg) / <alpha-value>)',
-        card: 'rgb(var(--card) / <alpha-value>)',
-        muted: 'rgb(var(--muted) / <alpha-value>)',
-        border: 'rgb(var(--border) / <alpha-value>)',
-        text: {
-          primary: 'rgb(var(--text-primary) / <alpha-value>)',
-          secondary: 'rgb(var(--text-secondary) / <alpha-value>)',
-        },
-        accent: {
-          DEFAULT: 'rgb(var(--accent) / <alpha-value>)',
-          hover: 'rgb(var(--accent-hover) / <alpha-value>)',
-          soft: 'rgb(var(--accent-soft) / <alpha-value>)',
-        },
-        success: 'rgb(var(--success) / <alpha-value>)',
-        warning: 'rgb(var(--warning) / <alpha-value>)',
-        danger: 'rgb(var(--danger) / <alpha-value>)',
+      fontFamily: {
+        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+        mono: ['JetBrains Mono', 'Fira Code', 'ui-monospace', 'monospace'],
       },
       keyframes: {
-        fadeInUp: {
-          '0%': { opacity: '0', transform: 'translateY(20px)' },
+        shimmer: {
+          '0%': { backgroundPosition: '-200% 0' },
+          '100%': { backgroundPosition: '200% 0' },
+        },
+        fadeIn: {
+          '0%': { opacity: '0', transform: 'translateY(8px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
-        },
-        slideInRight: {
-          '0%': { opacity: '0', transform: 'translateX(-20px)' },
-          '100%': { opacity: '1', transform: 'translateX(0)' },
-        },
-        slideInLeft: {
-          '0%': { opacity: '0', transform: 'translateX(20px)' },
-          '100%': { opacity: '1', transform: 'translateX(0)' },
         },
       },
       animation: {
-        fadeInUp: 'fadeInUp 0.5s ease-out',
-        slideInRight: 'slideInRight 0.5s ease-out',
-        slideInLeft: 'slideInLeft 0.5s ease-out',
-      },
-      boxShadow: {
-        'sm': '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
-        'md': '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+        shimmer: 'shimmer 2s linear infinite',
+        fadeIn: 'fadeIn 0.3s ease-out',
       },
     },
   },

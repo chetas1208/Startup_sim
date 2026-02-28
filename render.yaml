@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: startup-sim-web
+    name: venture-forge-web
     env: static
     buildCommand: cd apps/web && npm install && npm run build
     staticPublishPath: apps/web/dist
@@ -9,7 +9,7 @@ services:
         sync: false
 
   - type: web
-    name: startup-sim-api
+    name: venture-forge-api
     env: python
     region: oregon
     plan: starter

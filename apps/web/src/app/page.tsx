@@ -1,121 +1,150 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { Sparkles, ArrowRight, Zap, Target, Search, BarChart4 } from 'lucide-react'
-import { createRun } from '@/lib/api'
-import { useToast } from '@/components/Toast'
+import { useState, useCallback, useRef, useEffect } from 'react';
+import AppShell from '@/components/AppShell';
+import IdeaInputCard from '@/components/IdeaInputCard';
+import StepperCard from '@/components/StepperCard';
+import ResultsPanel from '@/components/ResultsPanel';
+import { INITIAL_STEPS } from '@/lib/mock-data';
+import type { PipelineStep, StepStatus } from '@/lib/mock-data';
 
-const EXAMPLE_IDEAS = [
-  'AI-powered meal planning for busy parents',
-  'B2B SaaS for solar panel installers',
-  'Sustainable fashion logistics engine',
-  'Remote healthcare scheduling for seniors',
-]
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+// Map backend AgentStep to frontend step keys
+const STEP_KEY_MAP: Record<string, string> = {
+  clarifier: 'clarify',
+  market_search: 'market',
+  deep_extract: 'extract',
+  normalize: 'normalize',
+  market_synthesis: 'synthesize',
+  competitive_analysis: 'compete',
+  vc_interview: 'interview',
+  funding_strategy: 'funding',
+};
 
 export default function HomePage() {
-  const [idea, setIdea] = useState('')
-  const [loading, setLoading] = useState(false)
-  const router = useRouter()
-  const { addToast } = useToast()
+  const [steps, setSteps] = useState<PipelineStep[]>(INITIAL_STEPS.map(s => ({ ...s })));
+  const [isRunning, setIsRunning] = useState(false);
+  const [dossier, setDossier] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
+  const eventSourceRef = useRef<EventSource | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!idea.trim()) return
+  // Cleanup SSE on unmount
+  useEffect(() => {
+    return () => {
+      eventSourceRef.current?.close();
+    };
+  }, []);
 
-    setLoading(true)
+  const updateStepsFromDossier = useCallback((data: any) => {
+    const currentStepKey = data.current_step ? STEP_KEY_MAP[data.current_step] : null;
+    const isDone = data.status === 'done';
+    const isError = data.status === 'error';
+
+    setSteps(prev => {
+      let passedCurrent = false;
+      return prev.map(step => {
+        if (isDone) return { ...step, status: 'done' as StepStatus };
+        if (isError && step.key === currentStepKey) return { ...step, status: 'error' as StepStatus };
+
+        if (step.key === currentStepKey) {
+          passedCurrent = true;
+          return { ...step, status: 'running' as StepStatus };
+        }
+        if (!passedCurrent) return { ...step, status: 'done' as StepStatus };
+        return { ...step, status: 'queued' as StepStatus };
+      });
+    });
+  }, []);
+
+  const runPipeline = useCallback(async (idea: string) => {
+    setIsRunning(true);
+    setDossier(null);
+    setError(null);
+    setSteps(INITIAL_STEPS.map(s => ({ ...s, status: 'queued' as StepStatus })));
+
     try {
-      const response = await createRun(idea)
-      addToast('Analysis engine engaged!', 'success')
-      router.push(`/run/${response.run_id}`)
-    } catch (error) {
-      console.error('Error creating run:', error)
-      addToast('Failed to start analysis. check backend connection.', 'error')
-    } finally {
-      setLoading(false)
+      // 1. Create run
+      const resp = await fetch(`${API_URL}/api/runs`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idea_text: idea }),
+      });
+
+      if (!resp.ok) throw new Error(`API error: ${resp.status}`);
+      const { run_id } = await resp.json();
+
+      // 2. Stream SSE events
+      const es = new EventSource(`${API_URL}/api/runs/${run_id}/events`);
+      eventSourceRef.current = es;
+
+      es.addEventListener('update', (e) => {
+        const data = JSON.parse(e.data);
+        updateStepsFromDossier(data);
+        setDossier(data);
+      });
+
+      es.addEventListener('complete', (e) => {
+        const data = JSON.parse(e.data);
+        updateStepsFromDossier(data);
+        setDossier(data);
+        setIsRunning(false);
+        es.close();
+      });
+
+      es.addEventListener('error', (e) => {
+        console.error('SSE error', e);
+        // Check if it's a MessageEvent with data
+        if (e instanceof MessageEvent && e.data) {
+          try {
+            const errData = JSON.parse(e.data);
+            setError(errData.message || 'Pipeline failed');
+          } catch {
+            setError('Connection lost');
+          }
+        }
+        setIsRunning(false);
+        es.close();
+      });
+
+      es.onerror = () => {
+        // EventSource reconnect logic — if it closes completely, stop
+        if (es.readyState === EventSource.CLOSED) {
+          setIsRunning(false);
+        }
+      };
+
+    } catch (e: any) {
+      setError(e.message || 'Failed to start analysis');
+      setIsRunning(false);
     }
-  }
+  }, [updateStepsFromDossier]);
+
+  const showResults = dossier?.status === 'done';
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] flex flex-col justify-center bg-zinc-50 dark:bg-zinc-950">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        {/* Hero Section */}
-        <div className="text-center mb-16 animate-fadeIn">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold mb-6 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-800">
-            <Sparkles className="w-3.5 h-3.5" />
-            Next-Gen Startup Intelligence
-          </div>
-          <h1 className="text-5xl md:text-6xl font-bold mb-6 text-zinc-900 dark:text-zinc-100 tracking-tight">
-            Venture<span className="text-indigo-600">Forge</span>
-          </h1>
-          <p className="text-xl max-w-2xl mx-auto text-zinc-600 dark:text-zinc-400 leading-relaxed">
-            AI-powered startup research, competitive intelligence, and strategic positioning engine.
-          </p>
+    <AppShell>
+      {/* Error banner */}
+      {error && (
+        <div className="mb-4 p-3 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-sm text-red-700 dark:text-red-400">
+          {error}
+          <button onClick={() => setError(null)} className="ml-2 underline">Dismiss</button>
+        </div>
+      )}
+
+      {/* 2-Column Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Left Column — Input + Progress */}
+        <div className="lg:col-span-4 space-y-4">
+          <IdeaInputCard onRun={runPipeline} isRunning={isRunning} />
+          <StepperCard steps={steps} />
         </div>
 
-        {/* Input Card */}
-        <div className="max-w-2xl mx-auto mb-20 animate-fadeInUp">
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl p-8 shadow-xl border border-zinc-200 dark:border-zinc-800">
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div>
-                <label className="flex items-center gap-2 text-sm font-bold mb-4 text-zinc-900 dark:text-zinc-200">
-                  <Zap className="w-4 h-4 text-indigo-600" />
-                  Your Startup Concept
-                </label>
-                <textarea
-                  value={idea}
-                  onChange={(e) => setIdea(e.target.value)}
-                  placeholder="Describe your idea in a few sentences..."
-                  className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 px-5 py-4 min-h-[140px] text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
-                  disabled={loading}
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={loading || !idea.trim()}
-                className="w-full flex items-center justify-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-4 transition-all group shadow-lg shadow-indigo-600/20"
-              >
-                {loading ? 'Initializing Agents...' : 'Forge Strategy'}
-                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-              </button>
-            </form>
-
-            <div className="mt-8 pt-6 border-t border-zinc-100 dark:border-zinc-800">
-              <p className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest mb-4">
-                Inspire your vision:
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {EXAMPLE_IDEAS.map((example, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setIdea(example)}
-                    className="text-xs px-3 py-1.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors border border-transparent"
-                  >
-                    {example}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Workflow Steps */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 max-w-4xl mx-auto">
-          {[
-            { icon: Zap, title: 'Clarify', desc: 'Structure the concept' },
-            { icon: Search, title: 'Research', desc: 'Live market data' },
-            { icon: Target, title: 'Analyze', desc: 'Competitive gaps' },
-            { icon: BarChart4, title: 'Position', desc: 'Win with strategy' },
-          ].map((step, i) => (
-            <div key={i} className="bg-white dark:bg-zinc-900 p-6 rounded-xl border border-zinc-200 dark:border-zinc-800 text-center">
-              <step.icon className="w-6 h-6 mx-auto mb-3 text-indigo-600" />
-              <h3 className="font-bold text-zinc-900 dark:text-zinc-100 mb-1">{step.title}</h3>
-              <p className="text-xs text-zinc-500 dark:text-zinc-500">{step.desc}</p>
-            </div>
-          ))}
+        {/* Right Column — Results */}
+        <div className="lg:col-span-8">
+          <ResultsPanel show={showResults} dossier={dossier} />
         </div>
       </div>
-    </div>
-  )
+    </AppShell>
+  );
 }

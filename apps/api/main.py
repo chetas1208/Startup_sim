@@ -1,17 +1,21 @@
 """FastAPI main application for VentureForge."""
 import asyncio
 import logging
+import sys
+import os
 from contextlib import asynccontextmanager
 from datetime import datetime
-from typing import AsyncGenerator, Dict, Any
+from typing import AsyncGenerator
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from sse_starlette.sse import EventSourceResponse
 
-from app.config import settings
-from services.workflow import WorkflowOrchestrator
+# Add project root to path so shared/ is importable
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
+
+from config import settings
 from app.storage import get_storage_backend
 from shared.models import (
     CreateRunRequest,
@@ -41,10 +45,9 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS - Using settings or unrestricted for hackathon
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # settings.cors_origins.split(",") if hasattr(settings, 'cors_origins') else ["*"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -53,18 +56,14 @@ app.add_middleware(
 
 @app.get("/")
 async def root():
-    return {
-        "name": "VentureForge API",
-        "version": "1.0.0",
-        "status": "running",
-    }
+    return {"name": "VentureForge API", "version": "1.0.0", "status": "running"}
 
 
 @app.post("/api/runs", response_model=RunResponse)
 async def create_run(request: CreateRunRequest):
     """Start a new VentureForge simulation run."""
     storage = get_storage_backend()
-    
+
     run_id = storage.generate_run_id()
     dossier = VentureDossier(
         run_id=run_id,
@@ -73,13 +72,13 @@ async def create_run(request: CreateRunRequest):
         created_at=datetime.utcnow(),
         updated_at=datetime.utcnow(),
     )
-    
     await storage.save_dossier(dossier)
-    
+
     # Start workflow in background
+    from services.workflow import WorkflowOrchestrator
     orchestrator = WorkflowOrchestrator()
     asyncio.create_task(orchestrator.run_workflow(run_id, request.idea_text))
-    
+
     return RunResponse(run_id=run_id, status=RunStatus.QUEUED)
 
 
@@ -87,19 +86,18 @@ async def create_run(request: CreateRunRequest):
 async def stream_events(run_id: str):
     """Stream SSE events for a project run."""
     storage = get_storage_backend()
-    
+
     async def event_generator() -> AsyncGenerator[dict, None]:
         last_step = None
         last_status = None
-        
+
         while True:
             try:
                 dossier = await storage.get_dossier(run_id)
                 if not dossier:
                     yield {"event": "error", "data": '{"message": "Not found"}'}
                     break
-                
-                # Check for updates in step or status
+
                 if dossier.current_step != last_step or dossier.status != last_status:
                     yield {
                         "event": "update",
@@ -107,20 +105,20 @@ async def stream_events(run_id: str):
                     }
                     last_step = dossier.current_step
                     last_status = dossier.status
-                
+
                 if dossier.status in [RunStatus.DONE, RunStatus.ERROR]:
                     yield {
                         "event": "complete",
                         "data": dossier.model_dump_json(),
                     }
                     break
-                
-                await asyncio.sleep(1.5)
+
+                await asyncio.sleep(1.0)
             except Exception as e:
                 logger.error(f"SSE Error: {e}")
                 yield {"event": "error", "data": f'{{"message": "{str(e)}"}}'}
                 break
-    
+
     return EventSourceResponse(event_generator())
 
 
@@ -142,66 +140,26 @@ async def list_runs(limit: int = 20):
     return {"runs": runs}
 
 
-@app.get("/api/runs/{run_id}/pdf/{report_type}")
-async def download_pdf(run_id: str, report_type: str):
-    """Download specific strategic PDF reports."""
-    storage = get_storage_backend()
-    
-    filename_map = {
-        "market": "market_analysis.pdf",
-        "competition": "competitive_analysis.pdf",
-        "strategy": "strategy_positioning.pdf"
-    }
-    
-    if report_type not in filename_map:
-        raise HTTPException(status_code=400, detail="Invalid report type")
-        
-    filename = filename_map[report_type]
-    try:
-        content = await storage.get_artifact(run_id, filename)
-        return StreamingResponse(
-            iter([content]),
-            media_type="application/pdf",
-            headers={"Content-Disposition": f"attachment; filename={run_id}_{filename}"},
-        )
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail=f"Report {report_type} not found")
-
-
 @app.get("/api/runs/{run_id}/graph", response_model=GraphData)
 async def get_graph(run_id: str):
-    """Get graph data for visualization (from Neo4j or fallback)."""
+    """Get graph data for visualization."""
     storage = get_storage_backend()
     dossier = await storage.get_dossier(run_id)
     if not dossier:
         raise HTTPException(status_code=404, detail="Run not found")
-        
-    # Logic to build graph from dossier data (Fallback)
-    nodes = []
+
+    nodes = [{"id": "root", "label": dossier.clarification.idea_title if dossier.clarification else "Idea", "type": "Idea", "properties": {"text": dossier.idea_text}}]
     edges = []
-    
-    # Root Node
-    nodes.append({"id": "root", "label": "Startup Idea", "type": "Idea", "properties": {"text": dossier.idea_text}})
-    
+
     if dossier.market_research:
         for idx, comp in enumerate(dossier.market_research.competitors):
-            node_id = f"comp_{idx}"
-            nodes.append({
-                "id": node_id,
-                "label": comp.name,
-                "type": "Competitor",
-                "properties": {"description": comp.description}
-            })
-            edges.append({"source": "root", "target": node_id, "type": "MENTIONED_IN"})
-            
-    # TODO: Add segments if available in future
-    
+            nid = f"comp_{idx}"
+            nodes.append({"id": nid, "label": comp.name, "type": "Competitor", "properties": {"description": comp.description}})
+            edges.append({"source": "root", "target": nid, "type": "COMPETES_WITH"})
+
     return {"nodes": nodes, "edges": edges}
 
 
 if __name__ == "__main__":
     import uvicorn
-    # Use config values if available
-    host = getattr(settings, "api_host", "0.0.0.0")
-    port = getattr(settings, "api_port", 8000)
-    uvicorn.run(app, host=host, port=port)
+    uvicorn.run(app, host=settings.api_host, port=settings.api_port)

@@ -70,3 +70,6 @@ infra/aws/node_modules/
 *.bak
 .mypy_cache/
 .ruff_cache/
+
+# Next.js
+.next/

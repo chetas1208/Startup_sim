@@ -1,14 +1,12 @@
 const steps = [
   { key: 'clarifier', label: 'Idea' },
-  { key: 'market_research', label: 'Market' },
-  { key: 'positioning', label: 'Strategy' },
-  { key: 'mvp_planner', label: 'MVP' },
-  { key: 'landing_copy', label: 'Landing' },
-  { key: 'bull_investor', label: 'Bull' },
-  { key: 'skeptic_investor', label: 'Skeptic' },
-  { key: 'moderator', label: 'Debate' },
-  { key: 'finance', label: 'Finance' },
-  { key: 'finalizer', label: 'Final' },
+  { key: 'market_search', label: 'Search' },
+  { key: 'deep_extract', label: 'Extract' },
+  { key: 'normalize', label: 'Normalize' },
+  { key: 'market_synthesis', label: 'Synthesis' },
+  { key: 'competitive_analysis', label: 'Competitors' },
+  { key: 'vc_interview', label: 'Interview' },
+  { key: 'funding_strategy', label: 'Funding' },
 ]
 
 export default function ProgressTracker({ dossier }) {
@@ -17,10 +15,10 @@ export default function ProgressTracker({ dossier }) {
 
   const getStepStatus = (stepKey) => {
     if (!currentStep) return 'pending'
-    
+
     const currentIndex = steps.findIndex((s) => s.key === currentStep)
     const stepIndex = steps.findIndex((s) => s.key === stepKey)
-    
+
     if (status === 'completed') return 'completed'
     if (stepIndex < currentIndex) return 'completed'
     if (stepIndex === currentIndex) return 'active'
@@ -41,11 +39,11 @@ export default function ProgressTracker({ dossier }) {
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
       <h3 className="text-lg font-semibold text-gray-900 mb-4">Progress</h3>
-      
+
       <div className="flex items-center justify-between">
         {steps.map((step, index) => {
           const stepStatus = getStepStatus(step.key)
-          
+
           return (
             <div key={step.key} className="flex items-center">
               <div className="flex flex-col items-center">
@@ -60,12 +58,11 @@ export default function ProgressTracker({ dossier }) {
                   {step.label}
                 </span>
               </div>
-              
+
               {index < steps.length - 1 && (
                 <div
-                  className={`h-1 w-8 mx-2 ${
-                    stepStatus === 'completed' ? 'bg-green-500' : 'bg-gray-200'
-                  }`}
+                  className={`h-1 w-8 mx-2 ${stepStatus === 'completed' ? 'bg-green-500' : 'bg-gray-200'
+                    }`}
                 />
               )}
             </div>

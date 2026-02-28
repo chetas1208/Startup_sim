@@ -48,99 +48,37 @@ class WorkflowOrchestrator:
         self.numeric = get_numeric_client()
     
     async def run_workflow(self, run_id: str, idea: str):
-        """Run the complete workflow."""
+        """Run the complete VentureForge workflow."""
         try:
-            logger.info(f"Starting workflow for run {run_id}")
+            logger.info(f"Starting VentureForge workflow for run {run_id}")
             
             # Load dossier
             dossier = await self.storage.get_dossier(run_id)
             dossier.status = RunStatus.RUNNING
             await self.storage.save_dossier(dossier)
             
-            # Step 1: Clarify
-            await self._update_step(dossier, AgentStep.CLARIFIER)
-            clarified = await self._run_clarifier(idea)
-            dossier.clarified_idea = clarified
-            await self.storage.save_dossier(dossier)
+            # Run the AI Pipeline (Refactored Crew)
+            from services.agents.crew import run_venture_forge_pipeline
+            await run_venture_forge_pipeline(run_id, idea, dossier, self.storage)
             
-            # Step 2: Market Research
-            await self._update_step(dossier, AgentStep.MARKET_RESEARCH)
-            market = await self._run_market_research(clarified)
-            dossier.market_research = market
-            await self.storage.save_dossier(dossier)
+            # Reload dossier after pipeline
+            dossier = await self.storage.get_dossier(run_id)
             
-            # Store in Neo4j
-            await self._store_market_graph(run_id, idea, market, [])
-            
-            # Step 3: Positioning
-            await self._update_step(dossier, AgentStep.POSITIONING)
-            positioning = await self._run_positioning(clarified, market)
-            dossier.positioning = positioning
-            await self.storage.save_dossier(dossier)
-            
-            # Update Neo4j with differentiators
-            await self._store_market_graph(
-                run_id, idea, market, positioning.differentiators
-            )
-            
-            # Step 4: MVP Plan
-            await self._update_step(dossier, AgentStep.MVP_PLANNER)
-            mvp = await self._run_mvp_planner(clarified, positioning)
-            dossier.mvp_plan = mvp
-            await self.storage.save_dossier(dossier)
-            
-            # Step 5: Landing Copy
-            await self._update_step(dossier, AgentStep.LANDING_COPY)
-            landing = await self._run_landing_copy(clarified, positioning)
-            # Moderate landing copy
-            landing.headline = await self.modulate.revise_if_unsafe(landing.headline)
-            dossier.landing_page = landing
-            await self.storage.save_dossier(dossier)
-            
-            # Step 6-8: Investor Debate
-            await self._update_step(dossier, AgentStep.BULL_INVESTOR)
-            bull_args = await self._run_bull_investor(clarified, market, positioning, mvp)
-            
-            await self._update_step(dossier, AgentStep.SKEPTIC_INVESTOR)
-            skeptic_args = await self._run_skeptic_investor(clarified, market, positioning, mvp)
-            
-            await self._update_step(dossier, AgentStep.MODERATOR)
-            debate = await self._run_moderator(bull_args, skeptic_args)
-            dossier.debate = debate
-            await self.storage.save_dossier(dossier)
-            
-            # Step 9: Finance
-            await self._update_step(dossier, AgentStep.FINANCE)
-            finance = await self._run_finance(clarified, landing)
-            dossier.finance = finance
-            await self.storage.save_dossier(dossier)
-            
-            # Step 10: Finalizer
-            await self._update_step(dossier, AgentStep.FINALIZER)
-            final = await self._run_finalizer(dossier)
-            dossier.final_report = final
-            await self.storage.save_dossier(dossier)
-            
-            # Generate reports
-            await generate_reports(run_id, dossier, self.storage)
-            
-            # Index in Senso
-            if self.senso.is_enabled():
-                await self.senso.index_dossier(run_id, dossier)
-            
-            # Mark complete
-            dossier.status = RunStatus.COMPLETED
-            dossier.updated_at = datetime.utcnow()
-            await self.storage.save_dossier(dossier)
-            
-            logger.info(f"Workflow completed for run {run_id}")
-            
+            if dossier.status == RunStatus.DONE:
+                # Generate 3 PDFs (Market, Competition, Strategy)
+                from services.pdf_gen import generate_venture_reports
+                await generate_venture_reports(run_id, dossier, self.storage)
+                logger.info(f"VentureForge workflow completed for run {run_id}")
+            else:
+                logger.error(f"VentureForge pipeline finished with status: {dossier.status}")
+                
         except Exception as e:
             logger.error(f"Workflow error for run {run_id}: {e}", exc_info=True)
             dossier = await self.storage.get_dossier(run_id)
-            dossier.status = RunStatus.FAILED
-            dossier.error = str(e)
-            await self.storage.save_dossier(dossier)
+            if dossier:
+                dossier.status = RunStatus.ERROR
+                dossier.error = str(e)
+                await self.storage.save_dossier(dossier)
     
     async def _update_step(self, dossier: StartupDossier, step: AgentStep):
         """Update current step."""

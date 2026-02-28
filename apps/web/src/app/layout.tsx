@@ -1,31 +1,23 @@
-import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
-import './globals.css'
-import { AppShell } from '@/components/AppShell'
-import { ToastProvider } from '@/components/Toast'
-import { ThemeProvider } from 'next-themes'
-
-const inter = Inter({ subsets: ['latin'] })
+import type { Metadata } from 'next';
+import { ThemeProvider } from '@/components/ThemeProvider';
+import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Startup Sim Agent - AI-Powered Business Planning',
-  description: 'Turn an idea into a stress-tested startup plan with autonomous agents',
-}
+  title: 'VentureForge — Startup Simulator',
+  description: 'AI-powered startup research, competitive intelligence, and strategic positioning engine.',
+};
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <ToastProvider>
-            <AppShell>{children}</AppShell>
-          </ToastProvider>
-        </ThemeProvider>
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+      </head>
+      <body className="antialiased">
+        <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>
-  )
+  );
 }
