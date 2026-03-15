@@ -1,6 +1,6 @@
 """Generate markdown and PDF reports."""
 import markdown
-from weasyprint import HTML
+
 from io import BytesIO
 
 from app.models.dossier import StartupDossier
@@ -319,6 +319,12 @@ def generate_pdf(markdown_content: str) -> bytes:
     </html>
     """
     
+    try:
+        from weasyprint import HTML
+    except ImportError:
+        logger.error("WeasyPrint not installed or system libraries missing. PDF generation disabled.")
+        return b"PDF generation disabled due to missing system libraries."
+        
     pdf_file = BytesIO()
     HTML(string=html_with_style).write_pdf(pdf_file)
     return pdf_file.getvalue()

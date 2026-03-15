@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Dict, Any, List
 
 from crewai import Agent, Task, Crew
-from langchain.tools import Tool
+from langchain_core.tools import Tool
 from langchain_openai import ChatOpenAI
 
 from app.config import settings

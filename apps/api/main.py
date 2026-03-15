@@ -11,7 +11,7 @@ from fastapi.responses import StreamingResponse, FileResponse
 from sse_starlette.sse import EventSourceResponse
 
 from config import settings
-from services.workflow import WorkflowOrchestrator
+from services.runner import WorkflowRunner
 from services.storage import get_storage_backend
 from shared.models import (
     CreateRunRequest,
@@ -79,8 +79,8 @@ async def create_run(request: CreateRunRequest):
     await storage.save_dossier(dossier)
     
     # Start workflow in background
-    orchestrator = WorkflowOrchestrator()
-    asyncio.create_task(orchestrator.run_workflow(run_id, request.idea))
+    orchestrator = WorkflowRunner()
+    asyncio.create_task(orchestrator.run(run_id, request.idea))
     
     return CreateRunResponse(run_id=run_id, status=RunStatus.PENDING)
 

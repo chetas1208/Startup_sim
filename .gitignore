@@ -70,3 +70,4 @@ infra/aws/node_modules/
 *.bak
 .mypy_cache/
 .ruff_cache/
+/apps/api/.venv

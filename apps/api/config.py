@@ -47,7 +47,7 @@ class Settings(BaseSettings):
         return bool(self.aws_access_key_id and self.aws_s3_bucket)
     
     class Config:
-        env_file = ".env"
+        env_file = "../../.env"
         case_sensitive = False
         extra = "ignore"  # allow extra env vars (e.g. VITE_API_URL) without validation error
 

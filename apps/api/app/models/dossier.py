@@ -227,6 +227,30 @@ class FinalReport(BaseModel):
     go_to_market_summary: str
 
 
+# Additional Business Function Models
+
+class MarketingPlan(BaseModel):
+    target_audience: str
+    channels: List[str]
+    content_strategy: List[str]
+    budget_allocation: str
+    kpis: List[str]
+
+
+class SupplyChainPlan(BaseModel):
+    suppliers: List[str]
+    lead_time: str
+    logistics: List[str]
+    risk_mitigation: List[str]
+
+
+class InventoryPlan(BaseModel):
+    model: str
+    reorder_point: str
+    safety_stock: str
+    tracking_methods: List[str]
+
+
 # Main Dossier
 
 class StartupDossier(BaseModel):
@@ -262,30 +286,6 @@ class StartupDossier(BaseModel):
     status: RunStatus = RunStatus.PENDING
     current_step: Optional[AgentStep] = None
     error: Optional[str] = None
-
-
-# Additional Business Function Models
-
-class MarketingPlan(BaseModel):
-    target_audience: str
-    channels: List[str]
-    content_strategy: List[str]
-    budget_allocation: str
-    kpis: List[str]
-
-
-class SupplyChainPlan(BaseModel):
-    suppliers: List[str]
-    lead_time: str
-    logistics: List[str]
-    risk_mitigation: List[str]
-
-
-class InventoryPlan(BaseModel):
-    model: str
-    reorder_point: str
-    safety_stock: str
-    tracking_methods: List[str]
 
 
 # API Models
